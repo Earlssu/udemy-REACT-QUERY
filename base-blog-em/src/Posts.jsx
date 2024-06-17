@@ -1,19 +1,35 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {PostDetail} from "./PostDetail";
-import {useQuery} from "@tanstack/react-query";
-import {fetchPosts} from "./api.js";
+import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {deletePost, fetchPosts} from "./api.js";
 
 const maxPostPage = 10;
 
 export function Posts() {
-    const [currentPage, setCurrentPage] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
     const [selectedPost, setSelectedPost] = useState(null);
 
+    const queryClient = useQueryClient();
+
+    const deleteMutation = useMutation({
+        mutationFn: (postId) => deletePost(postId)
+    })
+
     const {data, isError, error, isLoading} = useQuery({
-        queryKey: ["posts"],
-        queryFn: fetchPosts,
+        queryKey: ["posts", currentPage],
+        queryFn: () => fetchPosts(currentPage),
         staleTime: 2000,
     });
+
+    useEffect(() => {
+        if (currentPage < maxPostPage) {
+            const nextPage = currentPage + 1;
+            queryClient.prefetchQuery({
+                queryKey: ["posts", nextPage],
+                queryFn: () => fetchPosts(nextPage),
+            });
+        }
+    }, [currentPage, queryClient]);
 
     if (isLoading) {
         return (
@@ -47,18 +63,20 @@ export function Posts() {
                 ))}
             </ul>
             <div className="pages">
-                <button disabled onClick={() => {
+                <button disabled={currentPage <= 1} onClick={() => {
+                    setCurrentPage(currentPage - 1);
                 }}>
                     Previous page
                 </button>
-                <span>Page {currentPage + 1}</span>
-                <button disabled onClick={() => {
+                <span>Page {currentPage}</span>
+                <button disabled={currentPage >= maxPostPage} onClick={() => {
+                    setCurrentPage(currentPage + 1);
                 }}>
                     Next page
                 </button>
             </div>
             <hr/>
-            {selectedPost && <PostDetail post={selectedPost}/>}
+            {selectedPost && <PostDetail post={selectedPost} deleteMutation={deleteMutation}/>}
         </>
     );
 }
