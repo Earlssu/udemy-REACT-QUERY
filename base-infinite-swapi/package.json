@@ -16,6 +16,8 @@
     "react-infinite-scroller": "^1.2.6"
   },
   "devDependencies": {
+    "@tanstack/react-query": "^5.45.1",
+    "@tanstack/react-query-devtools": "^5.45.1",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
@@ -23,6 +25,7 @@
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
+    "prettier": "3.3.2",
     "vite": "^4.4.5"
   }
 }
