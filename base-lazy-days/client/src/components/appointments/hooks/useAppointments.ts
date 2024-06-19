@@ -1,21 +1,21 @@
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { useState } from "react";
+import {useEffect, useState} from "react";
 
-import { AppointmentDateMap } from "../types";
-import { getAvailableAppointments } from "../utils";
-import { getMonthYearDetails, getNewMonthYear } from "./monthYear";
+import {AppointmentDateMap} from "../types";
+import {getMonthYearDetails, getNewMonthYear} from "./monthYear";
 
-import { useLoginData } from "@/auth/AuthContext";
-import { axiosInstance } from "@/axiosInstance";
-import { queryKeys } from "@/react-query/constants";
+import {useLoginData} from "@/auth/AuthContext";
+import {axiosInstance} from "@/axiosInstance";
+import {queryKeys} from "@/react-query/constants";
 
 // for useQuery call
 async function getAppointments(
-  year: string,
-  month: string
+    year: string,
+    month: string
 ): Promise<AppointmentDateMap> {
-  const { data } = await axiosInstance.get(`/appointments/${year}/${month}`);
-  return data;
+    const {data} = await axiosInstance.get(`/appointments/${year}/${month}`);
+    return data;
 }
 
 // The purpose of this hook:
@@ -27,43 +27,58 @@ async function getAppointments(
 //   3. track the state of the filter (all appointments / available appointments)
 //     3a. return the only the applicable appointments for the current monthYear
 export function useAppointments() {
-  /** ****************** START 1: monthYear state *********************** */
-  // get the monthYear for the current date (for default monthYear state)
-  const currentMonthYear = getMonthYearDetails(dayjs());
+    /** ****************** START 1: monthYear state *********************** */
+        // get the monthYear for the current date (for default monthYear state)
+    const currentMonthYear = getMonthYearDetails(dayjs());
 
-  // state to track current monthYear chosen by user
-  // state value is returned in hook return object
-  const [monthYear, setMonthYear] = useState(currentMonthYear);
+    // state to track current monthYear chosen by user
+    // state value is returned in hook return object
+    const [monthYear, setMonthYear] = useState(currentMonthYear);
 
-  // setter to update monthYear obj in state when user changes month in view,
-  // returned in hook return object
-  function updateMonthYear(monthIncrement: number): void {
-    setMonthYear((prevData) => getNewMonthYear(prevData, monthIncrement));
-  }
-  /** ****************** END 1: monthYear state ************************* */
-  /** ****************** START 2: filter appointments  ****************** */
-  // State and functions for filtering appointments to show all or only available
-  const [showAll, setShowAll] = useState(false);
+    // setter to update monthYear obj in state when user changes mont h in view,
+    // returned in hook return object
+    function updateMonthYear(monthIncrement: number): void {
+        setMonthYear((prevData) => getNewMonthYear(prevData, monthIncrement));
+    }
 
-  // We will need imported function getAvailableAppointments here
-  // We need the user to pass to getAvailableAppointments so we can show
-  //   appointments that the logged-in user has reserved (in white)
-  const { userId } = useLoginData();
+    /** ****************** END 1: monthYear state ************************* */
+    /** ****************** START 2: filter appointments  ****************** */
+        // State and functions for filtering appointments to show all or only available
+    const [showAll, setShowAll] = useState(false);
 
-  /** ****************** END 2: filter appointments  ******************** */
-  /** ****************** START 3: useQuery  ***************************** */
-  // useQuery call for appointments for the current monthYear
+    // We will need imported function getAvailableAppointments here
+    // We need the user to pass to getAvailableAppointments so we can show
+    //   appointments that the logged-in user has reserved (in white)
+    const {userId} = useLoginData();
 
-  // TODO: update with useQuery!
-  // Notes:
-  //    1. appointments is an AppointmentDateMap (object with days of month
-  //       as properties, and arrays of appointments for that day as values)
-  //
-  //    2. The getAppointments query function needs monthYear.year and
-  //       monthYear.month
-  const appointments: AppointmentDateMap = {};
+    /** ****************** END 2: filter appointments  ******************** */
+    /** ****************** START 3: useQuery  ***************************** */
+        // useQuery call for appointments for the current monthYear
 
-  /** ****************** END 3: useQuery  ******************************* */
+        // Notes:
+        //    1. appointments is an AppointmentDateMap (object with days of month
+        //       as properties, and arrays of appointments for that day as values)
+        //
+        //    2. The getAppointments query function needs monthYear.year and
+        //       monthYear.month
+    const fallback: AppointmentDateMap = {};
 
-  return { appointments, monthYear, updateMonthYear, showAll, setShowAll };
+    const {data: appointments = fallback} = useQuery({
+        queryKey: [queryKeys.appointments, monthYear.year, monthYear.month],
+        queryFn: () => getAppointments(monthYear.year, monthYear.month),
+    })
+
+    /** ****************** END 3: useQuery  ******************************* */
+
+    const queryClient = useQueryClient();
+    useEffect(() => {
+        const nextMonthYear = getNewMonthYear(monthYear, 1);
+        queryClient.prefetchQuery({
+            queryKey: [queryKeys.appointments, nextMonthYear.year, nextMonthYear.month],
+            queryFn: () => getAppointments(nextMonthYear.year, nextMonthYear.month)
+        })
+    }, [queryClient, monthYear]);
+
+
+    return {appointments, monthYear, updateMonthYear, showAll, setShowAll};
 }
