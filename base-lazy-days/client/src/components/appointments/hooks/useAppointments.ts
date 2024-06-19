@@ -1,12 +1,13 @@
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 import dayjs from "dayjs";
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
 
 import {AppointmentDateMap} from "../types";
 import {getMonthYearDetails, getNewMonthYear} from "./monthYear";
 
 import {useLoginData} from "@/auth/AuthContext";
 import {axiosInstance} from "@/axiosInstance";
+import {getAvailableAppointments} from "@/components/appointments/utils";
 import {queryKeys} from "@/react-query/constants";
 
 // for useQuery call
@@ -31,6 +32,7 @@ export function useAppointments() {
         // get the monthYear for the current date (for default monthYear state)
     const currentMonthYear = getMonthYearDetails(dayjs());
 
+
     // state to track current monthYear chosen by user
     // state value is returned in hook return object
     const [monthYear, setMonthYear] = useState(currentMonthYear);
@@ -51,6 +53,10 @@ export function useAppointments() {
     //   appointments that the logged-in user has reserved (in white)
     const {userId} = useLoginData();
 
+    const selectFn = useCallback((data: AppointmentDateMap, showAll: boolean) => {
+        if (showAll) return data;
+        return getAvailableAppointments(data, userId);
+    }, [userId])
     /** ****************** END 2: filter appointments  ******************** */
     /** ****************** START 3: useQuery  ***************************** */
         // useQuery call for appointments for the current monthYear
@@ -66,7 +72,10 @@ export function useAppointments() {
     const {data: appointments = fallback} = useQuery({
         queryKey: [queryKeys.appointments, monthYear.year, monthYear.month],
         queryFn: () => getAppointments(monthYear.year, monthYear.month),
+        select: (data) => selectFn(data, showAll),
+
     })
+
 
     /** ****************** END 3: useQuery  ******************************* */
 
@@ -75,7 +84,7 @@ export function useAppointments() {
         const nextMonthYear = getNewMonthYear(monthYear, 1);
         queryClient.prefetchQuery({
             queryKey: [queryKeys.appointments, nextMonthYear.year, nextMonthYear.month],
-            queryFn: () => getAppointments(nextMonthYear.year, nextMonthYear.month)
+            queryFn: () => getAppointments(nextMonthYear.year, nextMonthYear.month),
         })
     }, [queryClient, monthYear]);
 
