@@ -1,9 +1,22 @@
-// import { act, renderHook, waitFor } from "@testing-library/react";
+import {act, renderHook, waitFor} from "@testing-library/react";
+import {expect} from "vitest";
 
-import { useStaff } from "../hooks/useStaff";
+import {Staff} from "@shared/types";
 
-// import { createQueryClientWrapper } from "@/test-utils";
+import {useStaff} from "../hooks/useStaff";
+
+import {createQueryClientWrapper} from "@/test-utils";
+
 
 test("filter staff", async () => {
-  // the magic happens here
+    // the magic happens here
+    const {result} = renderHook(() => useStaff(), {wrapper: createQueryClientWrapper()})
+
+    await waitFor(() => expect(result.current.staff).toHaveLength(4));
+
+    act(() => result.current.setFilter("facial"))
+
+    await waitFor(() => {
+        expect(result.current.staff).toHaveLength(3);
+    })
 });
